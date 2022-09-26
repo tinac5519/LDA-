@@ -1,0 +1,24 @@
+import jieba,os
+import numpy as np
+import pandas as pd
+from pprint import pprint
+import gensim
+import gensim.corpora as corpora
+from gensim import corpora, models, similarities
+from gensim.utils import simple_preprocess
+from gensim.models import CoherenceModel
+from wordcloud import WordCloud
+
+import pyLDAvis
+import pyLDAvis.gensim_models # don't skip this
+import matplotlib.pyplot as plt
+
+import logging
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+import time
+time_Start = time.time()
+
+import sys, re
