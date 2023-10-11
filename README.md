@@ -94,7 +94,7 @@ for i in products_list_temp:
     products_list.append(con)
 output['ws'] = products_list
 data_json=output.to_dict('records')
-client = bigquery.Client(project='dvibe-main')
+client = bigquery.Client(project=project_id)
 # Iterate through the fetched rows and update ws values
 for row in data_json:
     content = row['content']
@@ -104,7 +104,7 @@ ws = str(row['ws'])
     
 # Update the ws column in the BigQuery table
 update_query = """
-  UPDATE `your_project_id.ypur_table`
+  UPDATE `your_project_id.your_table`
   SET ws = @ws
   WHERE content = @content
     """
