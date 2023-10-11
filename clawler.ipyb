@@ -1,0 +1,36 @@
+import json
+import requests
+import pandas as pd
+import pandas_gbq
+from google.cloud import bigquery
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re
+from google.colab import auth
+auth.authenticate_user()
+
+project_id=''#@param {type:"string"}
+table_id = ''#@param {type:"string"}
+PTT_URL = ["https://www.ptt.cc/bbs/MakeUp/index.html"]
+for url in PTT_URL:
+  resp = requests.get(url, headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"})
+  soup = BeautifulSoup(resp.text, 'html.parser')
+  df = pd.DataFrame(columns=['date','media_source','cat_source','art_link','title','content','ws'])
+  content = []
+  for item in soup.select('div.bbs-screen > div.r-ent'):
+    pubtime = item.select('div.meta > div.date')[0].text
+    title = re.sub(r'[\t\r\n]','',item.select('div.title')[0].text)
+    if str(datetime.today().date().strftime('%m/%d')) == pubtime:
+      link_suffix = item.select('div.title > a')[0]['href']
+      art_link = 'https://www.ptt.cc'+link_suffix
+      resp1 = requests.get(art_link, headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"})
+      soup1 = BeautifulSoup(resp1.text, 'html.parser')
+      para = soup1.select('div.bbs-screen')[0].findAll(text=True,recursive=False)[0]
+      if re.sub(r'[\t\r\n]','',para) != '':
+        new_row = {'date': str(datetime.today().year)+'/'+pubtime, 'media_source': 'PTT/Makeup', 'cat_source': url, 'art_link': art_link, 'title':title, 'content': re.sub(r'[\t\r\n]','',para), 'ws': None }
+        df=df.append(new_row,ignore_index=True)
+      else:
+        break
+      
+  df['timestamp'] = pd.to_datetime(df['date'],format='%Y/%m/%d')
+  pandas_gbq.to_gbq(df,table_id,project_id=project_id,progress_bar=True,if_exists='append')
