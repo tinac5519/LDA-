@@ -1,0 +1,78 @@
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
+import pandas as pd
+import json
+from google.cloud import bigquery
+import pandas_gbq
+import requests
+import json
+import ast
+import matplotlib.pyplot as plt
+import pyLDAvis
+import pyLDAvis.sklearn
+from google.cloud import storage
+from datetime import date, timedelta
+
+from google.colab import auth
+auth.authenticate_user()
+
+#隨便創個txt或是直接空列表亦可
+stopwords = [line.strip() for line in open('stopwords.txt',encoding='UTF-8').readlines()]
+
+project_id=''#@param {type:"string"}
+query="SELECT ws FROM `your_table` WHERE DATE_TRUNC(DATE(timestamp), MONTH) = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), MONTH)"
+output = pd.read_gbq(query=query,project_id=project_id)
+products_list_temp = output.ws.tolist()
+products_list=[]
+for i in products_list_temp:
+  try:
+    a = ast.literal_eval(i)
+  except:
+    a=''
+  products_list.append(a)
+  text=[]
+for i in products_list:
+  temp=''
+  for k in i:
+    if (k not in stopwords)and len(k)>1:
+      temp+=k
+      temp+=' '
+  text.append(temp)
+output["content_cutted"] = text
+n_features = 1000
+tf_vectorizer = CountVectorizer(strip_accents = 'unicode',
+                              max_features=n_features,
+                              #stop_words=,
+                              max_df = 0.5,
+                              min_df = 10)
+tf = tf_vectorizer.fit_transform(output.content_cutted)
+
+perplexity_score = []
+tpoic_number = []
+for i in range(4, 9):
+  lda = LatentDirichletAllocation(n_components=i, max_iter=50,
+                              learning_method='online',
+                              learning_offset=50.,
+                              random_state=0)
+  lda.fit(tf)
+  lda.perplexity(tf, sub_sampling=False)
+  perplexity_score.append(lda.perplexity(tf, sub_sampling=False))
+  tpoic_number.append(i)
+a=perplexity_score.index(min(perplexity_score))
+num_topics = tpoic_number[a]
+
+n_topics = num_topics
+lda = LatentDirichletAllocation(n_components=n_topics, max_iter=50,
+                              learning_method='online',
+                              learning_offset=50.,
+                              random_state=0)
+lda.fit(tf)
+p = pyLDAvis.sklearn.prepare(lda, tf, tf_vectorizer)
+a = pyLDAvis.prepared_data_to_html(p, d3_url=None, ldavis_url=None, ldavis_css_url=None, template_type="general", visid=None, use_http=False)
+today = date.today().replace(day=1) - timedelta(days=1)
+month = today.strftime("%Y-%m")
+storage_client = storage.Client()
+content_type = 'text/html'
+bucket = storage_client.bucket('lda_html')
+blob = bucket.blob(month)
+blob.upload_from_string(a, content_type='text/html')
