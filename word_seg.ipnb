@@ -1,0 +1,59 @@
+import jieba.posseg
+import jieba
+import json
+import pandas as pd
+import pandas_gbq
+from google.cloud import bigquery
+from datetime import datetime
+
+from google.colab import auth
+auth.authenticate_user()
+
+stopwords = ['，','。','XD','XDD']
+stop = ['v','vx','p','pba','pbei','c','cc','e','h','j','k','m','mg','mq','q','r','rr','u','x','y','ud','ug','uj','ul','uv','uz']
+
+
+project_id=''#@param {type:"string"}
+query="""
+SELECT content
+FROM `your_table`
+WHERE DATE(timestamp) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+"""
+output = pd.read_gbq(query=query, project_id=project_id)
+products_list_temp = output.content.tolist()
+products_list = []
+
+for i in products_list_temp:
+  seg_lig = jieba.posseg.cut(i)
+  con=[]
+  for word, flag in seg_lig:
+    if (flag not in stop) and (word not in stopwords) and (word!=''):
+      con.append(word)
+  products_list.append(con)
+
+output['ws'] = products_list
+data_json=output.to_dict('records')
+client = bigquery.Client(project=project_id)
+# Iterate through the fetched rows and update ws values
+for row in data_json:
+  content = row['content']
+  
+  # Perform necessary operations to obtain ws value using Python code
+  ws = str(row['ws'])
+  
+  # Update the ws column in the BigQuery table
+  update_query = """
+      UPDATE `your_table`
+      SET ws = @ws
+      WHERE content = @content
+  """
+  parameters = [
+      bigquery.ScalarQueryParameter("ws", "STRING", ws),
+      bigquery.ScalarQueryParameter("content", "STRING", content)
+  ]
+
+  update_job_config = bigquery.QueryJobConfig()
+  update_job_config.query_parameters = parameters
+  
+  update_job = client.query(update_query, job_config=update_job_config)
+  update_job.result()
