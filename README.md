@@ -79,7 +79,7 @@ stop = ['v','vx','p','pba','pbei','c','cc','e','h','j','k','m','mg','mq','q','r'
 project_id='your_project_id'
 query="""
   SELECT content
-  FROM `your_project_id.ypur_table`
+  FROM `your_project_id.your_table`
   WHERE DATE(timestamp) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY) AND DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
   """
 output = pd.read_gbq(query=query, project_id=project_id)
@@ -148,8 +148,8 @@ stopwords = [line.strip() for line in open('stopwords.txt',encoding='UTF-8').rea
 因執行地點為cloud function，效能緣故，故將判斷混淆度之主題數量設為4-8(for i in range(4, 9))，若情況允許可設定更多主題數量，提升準確度。
 
 ```
-project_id='dvibe-main'
-query="SELECT ws FROM `dvibe-main.word_analyzer.ptt_makeup_content` WHERE DATE_TRUNC(DATE(timestamp), MONTH) = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), MONTH)"
+project_id='your_project_id.'
+query="SELECT ws FROM `your_project_id.your_table` WHERE DATE_TRUNC(DATE(timestamp), MONTH) = DATE_TRUNC(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), MONTH)"
 output = pd.read_gbq(query=query,project_id=project_id)
 products_list_temp = output.ws.tolist()
 products_list=[]
